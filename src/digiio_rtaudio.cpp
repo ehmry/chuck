@@ -151,7 +151,7 @@ void Digitalio::probe()
     
     // allocate RtAudio
     try { rta = new RtAudio( ); }
-    catch( RtError err )
+    catch( RtAudioError err )
     {
         // problem finding audio devices, most likely
         EM_error2b( 0, "%s", err.getMessage().c_str() );
@@ -169,7 +169,7 @@ void Digitalio::probe()
     for( int i = 0; i < devices; i++ )
     {
         try { info = rta->getDeviceInfo(i); }
-        catch( RtError & error )
+        catch( RtAudioError & error )
         {
             error.printMessage();
             break;
@@ -205,7 +205,7 @@ DWORD__ Digitalio::device_named( const std::string & name, t_CKBOOL needs_dac, t
     
     // allocate RtAudio
     try { rta = new RtAudio( ); }
-    catch( RtError err )
+    catch( RtAudioError err )
     {
         // problem finding audio devices, most likely
         EM_error2b( 0, "%s", err.getMessage().c_str() );
@@ -220,7 +220,7 @@ DWORD__ Digitalio::device_named( const std::string & name, t_CKBOOL needs_dac, t
     for( int i = 0; i < devices; i++ )
     {
         try { info = rta->getDeviceInfo(i); }
-        catch( RtError & error )
+        catch( RtAudioError & error )
         {
             error.printMessage();
             break;
@@ -239,7 +239,7 @@ DWORD__ Digitalio::device_named( const std::string & name, t_CKBOOL needs_dac, t
         for( int i = 0; i < devices; i++ )
         {
             try { info = rta->getDeviceInfo(i); }
-            catch( RtError & error )
+            catch( RtAudioError & error )
             {
                 error.printMessage();
                 break;
@@ -269,7 +269,16 @@ DWORD__ Digitalio::device_named( const std::string & name, t_CKBOOL needs_dac, t
 
 
 
-#if !defined(__PLATFORM_WIN32__) || defined(__WINDOWS_PTHREAD__)
+#if defined(__PLATFORM_GENODE__)
+//-----------------------------------------------------------------------------
+// name: set_priority()
+// desc: ...
+//-----------------------------------------------------------------------------
+static t_CKBOOL set_priority( CHUCK_THREAD tid, t_CKINT priority )
+{
+    return FALSE;
+}
+#elif !defined(__PLATFORM_WIN32__) || defined(__WINDOWS_PTHREAD__)
 //-----------------------------------------------------------------------------
 // name: set_priority()
 // desc: ...
@@ -515,7 +524,7 @@ BOOL__ Digitalio::initialize( DWORD__ num_dac_channels,
     {
         // allocate RtAudio
         try { m_rtaudio = new RtAudio( ); }
-        catch( RtError err )
+        catch( RtAudioError err )
         {
             // problem finding audio devices, most likely
             EM_error2( 0, "%s", err.getMessage().c_str() );
@@ -584,13 +593,13 @@ BOOL__ Digitalio::initialize( DWORD__ num_dac_channels,
             {
                 // difference
                 long diff = device_info.sampleRates[i] - sampling_rate;
-                // check // ge: changed from abs to labs, 2015.11
-                if( ::labs(diff) < closestDiff )
+                // check
+                if( ::abs(diff) < closestDiff )
                 {
                     // remember index
                     closestIndex = i;
                     // update diff
-                    closestDiff = ::labs(diff);
+                    closestDiff = ::abs(diff);
                 }
 
                 // for next highest
@@ -711,7 +720,7 @@ BOOL__ Digitalio::initialize( DWORD__ num_dac_channels,
                 CK_RTAUDIO_FORMAT, sampling_rate, &bufsize, 
                 m_use_cb ? ( block ? &cb : &cb2 ) : NULL, vm_ref, 
                 &stream_options );
-        } catch( RtError err ) {
+        } catch( RtAudioError err ) {
             // log
             EM_log( CK_LOG_INFO, "exception caught: '%s'...", err.getMessage().c_str() );
             EM_error2( 0, "%s", err.getMessage().c_str() );
@@ -956,7 +965,7 @@ BOOL__ Digitalio::start( )
     try{ if( !m_start )
               m_rtaudio->startStream();
          m_start = TRUE;
-    } catch( RtError err ){ return FALSE; }
+    } catch( RtAudioError err ){ return FALSE; }
 #endif // __DISABLE_RTAUDIO__
 
 #if defined(__CHIP_MODE__)
@@ -980,7 +989,7 @@ BOOL__ Digitalio::stop( )
     try{ if( m_start )
              m_rtaudio->stopStream();
          m_start = FALSE;
-    } catch( RtError err ){ return FALSE; }
+    } catch( RtAudioError err ){ return FALSE; }
 #endif // __DISABLE_RTAUDIO__
 
 #if defined(__CHIP_MODE__)
@@ -1013,7 +1022,7 @@ BOOL__ Digitalio::stop( )
 //        }
 //        
 //        return TRUE;
-//    } catch( RtError err ){ return FALSE; }
+//    } catch( RtAudioError err ){ return FALSE; }
 //#endif // __DISABLE_RTAUDIO__
 //    
 //    return FALSE;

@@ -45,6 +45,10 @@
  #include <dirent.h>
 #endif
 
+#ifdef __PLATFORM_GENODE__
+#include <trace/timestamp.h>
+#endif
+
 using namespace std;
 
 // global shell pointer (lives in chuck_main)
@@ -630,7 +634,7 @@ void Chuck_Shell::do_code( string & code, string & out, string command )
         prompt = variables["COMMAND_PROMPT"];
         return;
     }
-#else
+#elif defined(__PLATFORM_WIN32__)
     char tmp_filepath1[MAX_PATH];
     win32_tmpnam(tmp_filepath1);
 
@@ -650,6 +654,19 @@ void Chuck_Shell::do_code( string & code, string & out, string command )
         prompt = variables["COMMAND_PROMPT"];
         return;
     }
+#elif defined(__PLATFORM_GENODE__)
+    char tmp_filepath[32];
+    snprintf(tmp_filepath, sizeof(tmp_filepath), "/tmp/chuck_file.%x", Genode::Trace::Timestamp()&0xFFFFU);
+
+    FILE * tmp_file = fopen( tmp_filepath, "w" );
+    if( tmp_file == NULL )
+    {
+        out += string( "shell: error: unable to open tmpfile '" ) + tmp_filepath + "'\n";
+        prompt = variables["COMMAND_PROMPT"];
+        return;
+    }
+#else
+#error Missing platform code for temporary files
 #endif
         
     // write the code to the temp file

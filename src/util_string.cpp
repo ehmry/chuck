@@ -40,6 +40,10 @@
 #include <linux/limits.h>
 #endif // __PLATFORM_LINUX__
 
+#ifdef __PLATFORM_GENODE__
+#define PATH_MAX 512
+#endif // __PLATFORM_GENODE__
+
 #include <stdio.h>
 using namespace std;
 

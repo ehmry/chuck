@@ -176,8 +176,16 @@ t_CKINT Chuck_VM::our_priority = 85;
 t_CKINT Chuck_VM::our_priority = 0x7fffffff;
 #endif
 
-
-#if !defined(__PLATFORM_WIN32__) || defined(__WINDOWS_PTHREAD__)
+#if defined(__PLATFORM_GENODE__)
+//-----------------------------------------------------------------------------
+// name: set_priority()
+// desc: ...
+//-----------------------------------------------------------------------------
+t_CKBOOL Chuck_VM::set_priority( t_CKINT priority, Chuck_VM * vm )
+{
+    return FALSE;
+}
+#elif !defined(__PLATFORM_WIN32__) || defined(__WINDOWS_PTHREAD__)
 //-----------------------------------------------------------------------------
 // name: set_priority()
 // desc: ...
@@ -242,7 +250,6 @@ t_CKBOOL Chuck_VM::set_priority( t_CKINT priority, Chuck_VM * vm )
     return TRUE;
 }
 #endif
-
 
 
         

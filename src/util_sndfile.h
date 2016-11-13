@@ -184,6 +184,18 @@
 #define HAVE_LRINT 1
 #endif
 
+#if defined(__PLATFORM_GENODE__)
+#define TYPEOF_SF_COUNT_T long
+#define CPU_CLIPS_POSITIVE 0
+#define CPU_IS_BIG_ENDIAN 0
+#define CPU_IS_LITTLE_ENDIAN 1
+#define HAVE_PREAD 1
+#define HAVE_PWRITE 1
+#define OS_IS_MACOSX 0
+#define OS_IS_WIN32 0
+#define HAVE_LRINTF 1
+#define HAVE_LRINT 1
+#endif
 
 
 // XXX 'inline' is necessary for C compilation
