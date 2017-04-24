@@ -3725,7 +3725,7 @@ t_CKINT WiiRemote::disconnect()
     msg.device_type = CK_HID_DEV_WIIREMOTE;
     msg.type = CK_HID_DEVICE_DISCONNECTED;
     
-    HidInManager::push_message( msg );    
+    HidInManager::push_message( msg );
     
     return 0;
 }
@@ -7681,43 +7681,132 @@ const char * Keyboard_name( int k )
 
 #elif defined(__PLATFORM_GENODE__)
 
-void Hid_init() { }
-void Hid_poll() { }
-void Hid_quit() { }
+#include <input/keycodes.h>
+#include <input_session/connection.h>
+#include <util/reconstructible.h>
 
-void Joystick_init() { }
+static Genode::Env *g_input_env;
+
+void init_input(Genode::Env &env)
+{
+    g_input_env = &env;
+}
+
+Genode::Constructible<Input::Connection> g_input_session;
+
+static int g_input_count = 0;
+
+void Hid_init()
+{
+    if ( !g_input_session.constructed() ) {
+        if ( !g_input_env ) {
+            Genode::error("platform input not initialized with 'init_input'");
+            throw -1;
+        }
+        g_input_session.construct( *g_input_env );
+    }
+    g_input_count = g_input_count < 1 ? 1 : g_input_count+1;
+}
+
+// A synchronous RPC poll
+void Hid_poll()
+{
+    g_input_session->for_each_event( [&] ( Input::Event const &ev ) {
+        HidMsg msg;
+
+        switch (ev.type()) {
+        case Input::Event::MOTION:
+            msg.device_type = CK_HID_DEV_MOUSE;
+            msg.type = CK_HID_MOUSE_MOTION;
+            msg.idata[0] = ev.ax();
+            msg.idata[1] = ev.ay();
+            break;
+
+        case Input::Event::WHEEL:
+            msg.device_type = CK_HID_DEV_MOUSE;
+            msg.type = CK_HID_MOUSE_WHEEL;
+            msg.idata[0] = 0;
+            msg.idata[1] = ev.ry();
+            break;
+
+        case Input::Event::PRESS:
+            if (ev.code() == Input::BTN_MOUSE)
+                msg.device_type = CK_HID_DEV_MOUSE;
+            else
+                msg.device_type = CK_HID_DEV_KEYBOARD;
+            msg.type = CK_HID_BUTTON_DOWN;
+            msg.idata[1] = ev.code();
+            msg.idata[2] = ev.utf8().b0;
+            break;
+
+        case Input::Event::RELEASE:
+            if (ev.code() == Input::BTN_MOUSE)
+                msg.device_type = CK_HID_DEV_MOUSE;
+            else
+                msg.device_type = CK_HID_DEV_KEYBOARD;
+            msg.type = CK_HID_BUTTON_UP;
+            msg.idata[1] = ev.code();
+            msg.idata[2] = ev.utf8().b0;
+            break;
+
+        case Input::Event::FOCUS:
+        case Input::Event::LEAVE:
+        case Input::Event::TOUCH:
+        case Input::Event::INVALID: return;
+        }
+
+        msg.eid = ev.code();
+
+        HidInManager::push_message( msg );
+    });
+}
+
+void Hid_quit()
+{
+    if ( --g_input_count <= 0 && g_input_session.constructed() )
+        g_input_session.destruct();
+}
+
+void Joystick_init()
+{
+    Genode::warning("Genode joystick input not implemented");
+}
+
 void Joystick_poll() { }
 void Joystick_quit() { }
 void Joystick_probe() { }
-int Joystick_count() { return -1; }
+int Joystick_count() { return 0; }
 int Joystick_open( int js ) { return -1; }
 int Joystick_open_async( int js ) { return -1; }
 int Joystick_open( const char * name ) { return -1; }
 int Joystick_close( int js ) { return -1; };
 int Joystick_send( int js, const HidMsg * msg ) { return -1; }
-const char * Joystick_name( int js ) { return ""; }
+const char * Joystick_name( int js ) { return "Genode Input session"; }
 
-void Mouse_init() { }
+void Mouse_init() { Hid_init(); }
 void Mouse_poll() { }
-void Mouse_quit() { }
-void Mouse_probe() { }
-int Mouse_count() { return -1; }
-int Mouse_open( int m ) { return -1; }
-int Mouse_open( const char * name ) { return -1; }
-int Mouse_close( int m ) { return -1; }
-int Mouse_send( int m, const HidMsg * msg ) { return -1; }
-const char * Mouse_name( int m ) { return ""; }
-int Mouse_buttons( int m ) { return -1; }
+void Mouse_quit() { Hid_quit(); }
 
-void Keyboard_init() { }
+void Mouse_probe() { }
+int Mouse_count() { return g_input_session.constructed() ? 1 : 0; }
+int Mouse_open( int m ) { return g_input_session.constructed() ? 0 : -1; }
+int Mouse_open( const char * name ) { return g_input_session.constructed() ? 0 : -1; }
+int Mouse_close( int m ) { return 0; }
+int Mouse_send( int m, const HidMsg * msg ) { return -1; }
+const char * Mouse_name( int m ) { return "Genode Input session"; }
+int Mouse_buttons( int m ) { return 0; }
+
+void Keyboard_init() { Hid_init(); }
 void Keyboard_poll() { }
-void Keyboard_quit() { }
+void Keyboard_quit() { Hid_quit(); }
 void Keyboard_probe() { }
-int Keyboard_count() { return -1; }
-int Keyboard_open( int kb ) { return -1; }
-int Keyboard_open( const char * name ) { return -1; }
-int Keyboard_close( int kb ) { return -1; }
-const char * Keyboard_name( int kb ) { return ""; }
+int Keyboard_count() { return g_input_session.constructed() ? 1 : 0; }
+
+int Keyboard_open( int kb ) { return g_input_session.constructed() ? 0 : -1; }
+
+int Keyboard_open( const char * name ) { return g_input_session.constructed() ? 0 : -1; }
+int Keyboard_close( int kb ) { return 0; }
+const char * Keyboard_name( int kb ) { return "Genode Input session"; }
 
 t_CKINT TiltSensor_setPollRate( t_CKINT usec )
 {
@@ -7785,7 +7874,7 @@ extern int Tablet_open( int ts ) { return -1; }
 extern int Tablet_close( int ts ) { return -1; }
 extern const char * Tablet_name( int ts ) { return NULL; }
 
-#endif
+#endif // __PLATFORM_GENODE__
 
 
 #ifdef __CHIP_MODE__

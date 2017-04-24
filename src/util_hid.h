@@ -32,7 +32,13 @@
 #ifndef __UTIL_HID_H__
 #define __UTIL_HID_H__
 
+#ifdef __PLATFORM_GENODE__
 
+#include <base/env.h>
+
+void init_input(Genode::Env &env);
+
+#endif // __PLATFORM_GENODE__
 
 
 //-----------------------------------------------------------------------------
